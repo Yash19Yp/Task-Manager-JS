@@ -1,113 +1,154 @@
 "use strict";
 
-let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-const taskForm = document.getElementById('taskForm');
-const taskList = document.getElementById('taskList');
-const searchInput = document.getElementById('searchInput');
+// To get an element by ID
+const $ = (ele) => document.getElementById(ele);
 
-function saveTasks() {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-}
+// To get data from localStorage
+const getFromLocalStorage = (item) => {
+  return JSON.parse(localStorage.getItem(item)) || [];
+};
 
-function renderTasks(tasksToRender) {
-    taskList.innerHTML = '';
-    tasksToRender.forEach((task, index) => {
-        const li = document.createElement('li');
-        li.className = 'task';
-        li.style.backgroundColor = getRandomColor(); // Assign random color
-        li.innerHTML = `
-            <h3>${task.description}</h3>
-            <p><strong>Assigned to:</strong> ${task.assignedTo}</p>
-            <p><strong>Due Date:</strong> ${task.dueDate}</p>
-            <p><strong>Priority:</strong> ${task.priority}</p>
-            <p><strong>Category:</strong> ${task.category}</p>
-            <button onclick="editTask(${index})">Edit</button>
-            <button onclick="deleteTask(${index})">Delete</button>
-        `;
-        taskList.appendChild(li);
-        li.scrollIntoView(); // Scroll the new task into view
-    });
-}
+// To set data to localStorage
+const setToLocalStorage = () => {
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+};
 
-function getRandomColor() {
-    const colors = ['#f8b400', '#7cb342', '#039be5', '#f06292', '#9575cd', '#66bb6a']; // Array of predefined colors
-    return colors[Math.floor(Math.random() * colors.length)];
-}
+// Retrieve tasks from localStorage
+let tasks = getFromLocalStorage("tasks");
 
-function addTask(event) {
-    event.preventDefault();
-    const newTask = {
-        description: document.getElementById('taskDescription').value,
-        assignedTo: document.getElementById('assignedTo').value,
-        dueDate: document.getElementById('dueDate').value,
-        priority: document.getElementById('priority').value,
-        category: document.getElementById('category').value
+// Get Elements form DOM tree
+const taskForm = $("taskForm");
+const taskList = $("taskList");
+const searchInput = $("searchInput");
+
+// To render tasks to the DOM
+const displayTasks = (tasksToRender) => {
+  taskList.innerHTML = "";
+  tasksToRender.forEach((task, index) => {
+    const li = document.createElement("li");
+    li.className = "task";
+    li.style.backgroundColor = task.color;
+    li.innerHTML = `
+      <h3>${task.description}</h3>
+      <p><strong>Assigned to:</strong> ${task.assignedTo}</p>
+      <p><strong>Due Date:</strong> ${task.dueDate}</p>
+      <p><strong>Priority:</strong> ${task.priority}</p>
+      <p><strong>Category:</strong> ${task.category}</p>
+      <button onclick="editTask(${index})">Edit</button>
+      <button onclick="deleteTask(${index})">Delete</button>
+    `;
+    taskList.appendChild(li);
+  });
+};
+
+// To get a random color from a predefined list
+const getRandomColor = () => {
+  const colors = [
+    "#f8b400",
+    "#7cb342",
+    "#039be5",
+    "#f06292",
+    "#9575cd",
+    "#66bb6a",
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
+// To add a new task
+const addTask = (e) => {
+  e.preventDefault();
+  const newTask = {
+    description: $("description").value,
+    assignedTo: $("assignedTo").value,
+    dueDate: $("dueDate").value,
+    priority: $("priority").value,
+    category: $("category").value,
+    color: getRandomColor(), // Assign a random color when the task created
+  };
+  tasks.push(newTask);
+  setToLocalStorage();
+  displayTasks(tasks);
+  taskForm.reset();
+};
+
+// To edit an existing task
+const editTask = (index) => {
+  const task = tasks[index];
+  $("description").value = task.description;
+  $("assignedTo").value = task.assignedTo;
+  $("dueDate").value = task.dueDate;
+  $("priority").value = task.priority;
+  $("category").value = task.category;
+  $("description").focus();
+
+  const submitButton = taskForm.querySelector('button[type="submit"]');
+  submitButton.textContent = "Update Task";
+
+  // Remove previous event listener to prevent duplicates
+  taskForm.removeEventListener("submit", addTask);
+  taskForm.addEventListener("submit", function updateTask(e) {
+    e.preventDefault();
+    const updatedTask = {
+      ...task,
+      description: $("description").value,
+      assignedTo: $("assignedTo").value,
+      dueDate: $("dueDate").value,
+      priority: $("priority").value,
+      category: $("category").value,
     };
-    tasks.push(newTask);
-    saveTasks();
-    renderTasks(tasks);
+    tasks[index] = updatedTask;
+    setToLocalStorage();
+    displayTasks(tasks);
     taskForm.reset();
-}
+    submitButton.textContent = "Add Task";
+    taskForm.removeEventListener("submit", updateTask);
+    taskForm.addEventListener("submit", addTask);
+  });
+};
 
-function editTask(index) {
-    const task = tasks[index];
-    document.getElementById('taskDescription').value = task.description;
-    document.getElementById('assignedTo').value = task.assignedTo;
-    document.getElementById('dueDate').value = task.dueDate;
-    document.getElementById('priority').value = task.priority;
-    document.getElementById('category').value = task.category;
-    tasks.splice(index, 1);
-    saveTasks();
-    renderTasks(tasks);
-    // Change submit button to update button temporarily
-    taskForm.querySelector('button[type="submit"]').textContent = 'Update Task';
-    taskForm.removeEventListener('submit', addTask);
-    taskForm.addEventListener('submit', function updateTask(event) {
-        event.preventDefault();
-        addTask(event); // Reuse addTask function to update existing task
-        taskForm.reset();
-        taskForm.querySelector('button[type="submit"]').textContent = 'Add Task';
-        taskForm.removeEventListener('submit', updateTask);
-        taskForm.addEventListener('submit', addTask);
-    });
-}
+// To delete a task
+const deleteTask = (index) => {
+  tasks.splice(index, 1);
+  setToLocalStorage();
+  displayTasks(tasks);
+};
 
-function deleteTask(index) {
-    tasks.splice(index, 1);
-    saveTasks();
-    renderTasks(tasks);
-}
+// To search tasks based on the search input
+const searchTasks = () => {
+  const searchTerm = searchInput.value.toLowerCase();
+  const filteredTasks = tasks.filter((task) =>
+    Object.values(task).some((value) =>
+      value.toLowerCase().includes(searchTerm)
+    )
+  );
+  displayTasks(filteredTasks);
+};
 
-function searchTasks() {
-    const searchTerm = searchInput.value.toLowerCase();
-    const filteredTasks = tasks.filter(task => 
-        Object.values(task).some(value => 
-            value.toLowerCase().includes(searchTerm)
-        )
-    );
-    renderTasks(filteredTasks);
-}
+// To sort tasks by a filter type
+const sortTasks = (sortBy) => {
+  switch (sortBy) {
+    case "dueDate":
+      tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+      break;
+    case "priority":
+      tasks.sort((a, b) => {
+        const priorityOrder = { Low: 1, Medium: 2, High: 3 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+      break;
+    default:
+      tasks.sort((a, b) => a.description.localeCompare(b.description));
+      break;
+  }
+  displayTasks(tasks);
+};
 
-function sortTasks(sortBy) {
-    switch (sortBy) {
-        case 'dueDate':
-            tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-            break;
-        case 'priority':
-            tasks.sort((a, b) => {
-                const priorityOrder = { Low: 1, Medium: 2, High: 3 };
-                return priorityOrder[a.priority] - priorityOrder[b.priority];
-            });
-            break;
-        default:
-            // Default to sorting by description
-            tasks.sort((a, b) => a.description.localeCompare(b.description));
-            break;
-    }
-    renderTasks(tasks);
-}
+// Event listeners for form submission and search input
+taskForm.addEventListener("submit", addTask);
+searchInput.addEventListener("input", searchTasks);
 
-taskForm.addEventListener('submit', addTask);
-searchInput.addEventListener('input', searchTasks);
+// To Display the Tasks on Page load
+displayTasks(tasks);
 
-renderTasks(tasks);
+// Make sortTasks function globally available
+window.sortTasks = sortTasks;
